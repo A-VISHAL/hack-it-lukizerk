@@ -45,3 +45,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Ignore everything outside hack-it folder
+/*
+!/hack-it/
+!.gitignore
+!README.md
