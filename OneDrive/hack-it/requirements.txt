@@ -7,3 +7,4 @@ reportlab>=4.0.0
 Pillow>=10.0.0
 matplotlib>=3.7.0
 qrcode>=7.4.2
+shap>=0.41.0
