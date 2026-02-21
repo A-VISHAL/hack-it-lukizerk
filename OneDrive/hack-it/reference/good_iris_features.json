@@ -1,0 +1,13 @@
+{
+  "h_mean": 15.5,
+  "s_mean": 45.2,
+  "v_mean": 120.8,
+  "lbp_mean": 8.3,
+  "contrast": 12.5,
+  "entropy": 3.2,
+  "homogeneity": 0.85,
+  "edge_deviation": 0.15,
+  "circular_variance": 0.08,
+  "spot_count": 2,
+  "avg_spot_size": 8.5
+}

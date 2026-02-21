@@ -1,0 +1,22 @@
+# ML and Deep Learning Requirements
+# Note: TensorFlow requires Python 3.9-3.12
+# If using Python 3.13+, install these alternatives:
+
+# For Python 3.9-3.12:
+# tensorflow>=2.13.0
+
+# For Python 3.13+ (TensorFlow not yet supported):
+# Use TensorFlow nightly or wait for official support
+# tensorflow-cpu-aws  # Alternative for CPU-only
+
+# Core ML libraries (compatible with all Python versions)
+scikit-learn>=1.3.0
+scikit-image>=0.21.0
+joblib>=1.3.0
+matplotlib>=3.7.0
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Optional: Install TensorFlow manually if compatible
+# pip install tensorflow (for Python 3.9-3.12)
+# pip install tf-nightly (for Python 3.13+)
