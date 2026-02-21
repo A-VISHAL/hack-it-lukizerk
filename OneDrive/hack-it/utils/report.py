@@ -34,6 +34,9 @@ def generate_pdf_report(comparison_result, user_image_path, good_image_path, sec
     doc = SimpleDocTemplate(output_path, pagesize=letter)
     story = []
     
+    # Generate date string
+    date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
     # Styles
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
@@ -122,19 +125,25 @@ def generate_pdf_report(comparison_result, user_image_path, good_image_path, sec
             image_row.append(Paragraph(f"<i>Could not load user image</i>", normal_style))
     
     # Sector map
-    if sector_map_path and Path(sector_map_path).exists():
+    if sector_map_path is not None:
         try:
             # Save sector map if it's a numpy array
             if isinstance(sector_map_path, np.ndarray):
                 import cv2
+                Path("reports").mkdir(exist_ok=True)
                 temp_path = "reports/temp_sector_map.png"
                 cv2.imwrite(temp_path, sector_map_path)
                 sector_map_path = temp_path
             
-            img = Image(sector_map_path, width=2*inch, height=2*inch)
-            image_row.append(img)
-        except Exception:
-            pass
+            # Check if path exists (for string paths)
+            if isinstance(sector_map_path, (str, Path)):
+                path_obj = Path(sector_map_path)
+                if path_obj.exists():
+                    img = Image(str(path_obj), width=2*inch, height=2*inch)
+                    image_row.append(img)
+        except Exception as e:
+            # Silently skip if sector map can't be loaded
+            print(f"Warning: Could not load sector map: {str(e)}")
     
     if len(image_row) > 0:
         image_data.append([Paragraph("<b>Original Image</b>", normal_style), 
@@ -235,6 +244,19 @@ def generate_pdf_report(comparison_result, user_image_path, good_image_path, sec
         spot_features = []
         
         for key, value in differences.items():
+            # Skip sector_analysis if it's a dict
+            if key == 'sector_analysis' or isinstance(value, (dict, list)):
+                continue
+            
+            # Convert numpy array to float if needed
+            if isinstance(value, np.ndarray):
+                value = float(np.mean(value)) if value.size > 0 else 0.0
+            elif not isinstance(value, (int, float)):
+                try:
+                    value = float(value)
+                except (ValueError, TypeError):
+                    continue
+            
             if 'mean' in key.lower() or 'h_' in key or 's_' in key or 'v_' in key:
                 color_features.append([key, f"{value:.4f}"])
             elif 'lbp' in key.lower() or 'contrast' in key.lower() or 'entropy' in key.lower() or 'homogeneity' in key.lower():
@@ -359,6 +381,196 @@ def generate_pdf_report(comparison_result, user_image_path, good_image_path, sec
     ))
     story.append(Spacer(1, 0.3*inch))
     
+    # SHAP XAI Section
+    if 'ml_prediction' in comparison_result and comparison_result.get('ml_prediction'):
+        ml_pred = comparison_result['ml_prediction']
+        
+        if ml_pred.get('shap_available', False) and 'shap_data' in ml_pred:
+            story.append(Paragraph("<b>SHAP Explainable AI Analysis</b>", heading_style))
+            
+            # Plain language explanation
+            shap_data = ml_pred['shap_data']
+            shap_values = np.array(shap_data['shap_values'])
+            feature_names = shap_data['feature_names']
+            
+            # Get top 3 features
+            abs_shap = np.abs(shap_values)
+            top_3_indices = np.argsort(abs_shap)[-3:][::-1]
+            top_3_features = [feature_names[i] for i in top_3_indices]
+            
+            # Translate feature names
+            readable_features = []
+            for feat in top_3_features:
+                if 'mean' in feat.lower():
+                    readable_features.append(f"iris {feat.replace('_', ' ')}")
+                elif 'contrast' in feat.lower():
+                    readable_features.append("texture contrast")
+                elif 'edge' in feat.lower():
+                    readable_features.append("edge patterns")
+                else:
+                    readable_features.append(feat.replace('_', ' '))
+            
+            # Generate explanation text
+            health_score = ml_pred['health_score']
+            if health_score >= 70:
+                explanation = f"The model predicts high concern primarily due to: {', '.join(readable_features)}."
+            elif health_score >= 41:
+                explanation = f"The model predicts moderate concern with key factors being: {', '.join(readable_features)}."
+            else:
+                explanation = f"The model predicts healthy iris with normal values for: {', '.join(readable_features)}."
+            
+            story.append(Paragraph(explanation, normal_style))
+            story.append(Spacer(1, 0.2*inch))
+            
+            # SHAP methodology explanation
+            story.append(Paragraph(
+                "<b>What is SHAP?</b> SHAP (SHapley Additive exPlanations) is a method that explains "
+                "individual predictions by computing the contribution of each feature. Positive values "
+                "increase the health concern score, while negative values decrease it. This helps clinicians "
+                "understand which measurements drove the AI's assessment.",
+                normal_style
+            ))
+            story.append(Spacer(1, 0.2*inch))
+            
+            # SHAP heatmap
+            if 'sector_scores' in ml_pred and user_image_path:
+                try:
+                    from utils.shap_explainer import HeatmapGenerator
+                    import cv2
+                    
+                    # Load the segmented iris image
+                    segmented_img = cv2.imread(user_image_path, cv2.IMREAD_GRAYSCALE)
+                    if segmented_img is None:
+                        # Try to get from comparison result features
+                        features = comparison_result.get('user_features', {})
+                        if not segmented_img:
+                            raise ValueError("Could not load image for SHAP heatmap")
+                    
+                    # Generate heatmap
+                    heatmap_path = "reports/temp_shap_heatmap.png"
+                    Path("reports").mkdir(exist_ok=True)
+                    HeatmapGenerator.create_sector_heatmap(
+                        segmented_img,
+                        ml_pred['sector_scores'],
+                        heatmap_path
+                    )
+                    
+                    if Path(heatmap_path).exists():
+                        story.append(Paragraph("<b>SHAP Sector Heatmap</b>", heading_style))
+                        img = Image(heatmap_path, width=3*inch, height=3*inch)
+                        story.append(img)
+                        
+                        # Legend
+                        legend_data = [
+                            ['Color', 'Importance Level', 'Meaning'],
+                            ['Red', 'High (≥0.7)', 'Strong influence on prediction'],
+                            ['Yellow', 'Moderate (0.4-0.7)', 'Moderate influence on prediction'],
+                            ['Green', 'Low (<0.4)', 'Minimal influence on prediction']
+                        ]
+                        legend_table = Table(legend_data, colWidths=[1*inch, 1.5*inch, 2.5*inch])
+                        legend_table.setStyle(TableStyle([
+                            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
+                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                            ('FONTSIZE', (0, 0), (-1, -1), 9),
+                            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
+                        ]))
+                        story.append(Spacer(1, 0.1*inch))
+                        story.append(legend_table)
+                        story.append(Spacer(1, 0.2*inch))
+                except Exception as e:
+                    print(f"⚠️  Could not generate SHAP heatmap: {str(e)}")
+            
+            # Feature importance chart
+            try:
+                from utils.shap_explainer import HeatmapGenerator
+                
+                chart_path = "reports/temp_shap_chart.png"
+                HeatmapGenerator.create_feature_importance_chart(
+                    shap_values,
+                    feature_names,
+                    chart_path,
+                    top_n=15
+                )
+                
+                if Path(chart_path).exists():
+                    story.append(Paragraph("<b>Top Feature Contributions</b>", heading_style))
+                    img = Image(chart_path, width=5*inch, height=3*inch)
+                    story.append(img)
+                    story.append(Spacer(1, 0.2*inch))
+            except Exception as e:
+                print(f"⚠️  Could not generate feature importance chart: {str(e)}")
+            
+            # Waterfall plot
+            try:
+                from utils.shap_explainer import HeatmapGenerator
+                
+                waterfall_path = "reports/temp_shap_waterfall.png"
+                HeatmapGenerator.create_waterfall_plot(
+                    shap_data,
+                    waterfall_path,
+                    top_n=10
+                )
+                
+                if Path(waterfall_path).exists():
+                    story.append(Paragraph("<b>SHAP Waterfall Plot</b>", heading_style))
+                    story.append(Paragraph(
+                        "This plot shows how features cumulatively build up to the final prediction, "
+                        "starting from the base value (average prediction).",
+                        normal_style
+                    ))
+                    img = Image(waterfall_path, width=5*inch, height=3*inch)
+                    story.append(img)
+                    story.append(Spacer(1, 0.2*inch))
+            except Exception as e:
+                print(f"⚠️  Could not generate waterfall plot: {str(e)}")
+            
+            # SHAP summary statistics
+            story.append(Paragraph("<b>SHAP Summary Statistics</b>", heading_style))
+            
+            total_magnitude = float(np.sum(abs_shap))
+            positive_count = int(np.sum(shap_values > 0))
+            negative_count = int(np.sum(shap_values < 0))
+            most_important_idx = int(np.argmax(abs_shap))
+            most_important_feature = feature_names[most_important_idx]
+            
+            if 'sector_scores' in ml_pred:
+                most_important_sector = max(ml_pred['sector_scores'].items(), key=lambda x: x[1])[0]
+            else:
+                most_important_sector = 'N/A'
+            
+            summary_data = [
+                ['Metric', 'Value'],
+                ['Total Explanation Magnitude', f"{total_magnitude:.4f}"],
+                ['Features Increasing Score', str(positive_count)],
+                ['Features Decreasing Score', str(negative_count)],
+                ['Most Important Feature', most_important_feature],
+                ['Most Important Sector', most_important_sector],
+                ['Base Value (Model Average)', f"{shap_data['base_value']:.4f}"]
+            ]
+            
+            summary_table = Table(summary_data, colWidths=[3*inch, 2.5*inch])
+            summary_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.lightgrey)
+            ]))
+            story.append(summary_table)
+            story.append(Spacer(1, 0.3*inch))
+        else:
+            story.append(Paragraph("<b>SHAP Explainable AI</b>", heading_style))
+            story.append(Paragraph(
+                "SHAP explanation unavailable for this prediction. This may be due to missing SHAP library "
+                "or incompatible model type.",
+                normal_style
+            ))
+            story.append(Spacer(1, 0.3*inch))
+    
     # XAI Disclaimer
     story.append(Paragraph("<b>Explainable AI (XAI) Approach</b>", heading_style))
     story.append(Paragraph(
@@ -366,8 +578,9 @@ def generate_pdf_report(comparison_result, user_image_path, good_image_path, sec
         "(1) Original vs. Processed images show the analysis pipeline, "
         "(2) Sector maps visualize regional variations, "
         "(3) Anomaly detection identifies specific areas of interest, "
-        "(4) Symptom correlation contextualizes findings. "
-        "All measurements are based on real pixel-level data, not AI predictions.",
+        "(4) Symptom correlation contextualizes findings, "
+        "(5) SHAP values explain AI model predictions. "
+        "All measurements are based on real pixel-level data and validated AI methods.",
         normal_style
     ))
     story.append(Spacer(1, 0.3*inch))

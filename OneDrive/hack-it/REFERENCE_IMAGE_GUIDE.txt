@@ -1,0 +1,184 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║              REFERENCE IMAGE COMPARISON - SETUP GUIDE                    ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+✅ SIDE-BY-SIDE COMPARISON IMPLEMENTED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 WHAT WAS CHANGED:
+
+The app now ALWAYS shows:
+  LEFT SIDE:  Reference Healthy Iris (Baseline)
+  RIGHT SIDE: Patient's Uploaded Iris (For Analysis)
+
+This makes it easy to visually compare and see differences!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 COMPARISON VIEWS:
+
+1. ORIGINAL IMAGES
+   LEFT:  Reference healthy iris photo
+   RIGHT: Patient's uploaded photo
+
+2. SEGMENTED IRIS
+   LEFT:  Reference iris ROI (region of interest)
+   RIGHT: Patient's iris ROI
+
+3. SECTOR MAPS
+   LEFT:  Reference iris with 8 sectors marked
+   RIGHT: Patient's iris with 8 sectors marked
+
+4. RESULTS SECTION
+   LEFT:  Reference images (original + sector map)
+   RIGHT: Patient's images (segmented + sector map)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 HOW TO SET UP REFERENCE IMAGES:
+
+METHOD 1: Automatic Setup (Recommended)
+----------------------------------------
+
+1. Get a high-quality healthy iris image
+2. Run the setup script:
+
+   python setup_reference_images.py path/to/healthy_iris.jpg
+
+3. The script will create 3 reference files:
+   - reference/good_iris_reference.jpg (original)
+   - reference/good_iris_segmented.jpg (segmented ROI)
+   - reference/good_iris_sector_map.jpg (sector map)
+
+4. Done! The app will now show these on the left side.
+
+
+METHOD 2: Manual Setup
+----------------------
+
+1. Save your healthy iris image as:
+   reference/good_iris_reference.jpg
+
+2. (Optional) Create segmented and sector map versions:
+   - reference/good_iris_segmented.jpg
+   - reference/good_iris_sector_map.jpg
+
+3. If you only provide the reference image, the app will still work
+   and show it on the left side.
+
+
+METHOD 3: Use Existing Upload
+------------------------------
+
+If you have a good iris image in uploads/ folder:
+
+1. Run: python setup_reference_images.py uploads/your_image.jpg
+
+2. The script will process it and create all reference files.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 REFERENCE FILES STRUCTURE:
+
+reference/
+  ├── good_iris_reference.jpg      ← Original healthy iris
+  ├── good_iris_segmented.jpg      ← Segmented iris ROI
+  ├── good_iris_sector_map.jpg     ← Sector map (8 divisions)
+  ├── good_iris_features.json      ← Feature data (already exists)
+  └── iris_dataset.json             ← Dataset (already exists)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎨 VISUAL LAYOUT IN APP:
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        📷 Image Comparison                              │
+├──────────────────────────────────┬──────────────────────────────────────┤
+│  Reference Healthy Iris          │  Your Iris Image                     │
+│  (Baseline)                      │  (For Analysis)                      │
+│                                  │                                      │
+│  [Healthy iris image]            │  [Patient's uploaded image]          │
+│                                  │                                      │
+└──────────────────────────────────┴──────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    🔬 Segmented Iris Comparison                         │
+├──────────────────────────────────┬──────────────────────────────────────┤
+│  Reference Iris (Segmented)      │  Your Iris (Segmented)               │
+│                                  │                                      │
+│  [Segmented healthy iris]        │  [Segmented patient iris]            │
+│                                  │                                      │
+└──────────────────────────────────┴──────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      🎯 Sector Map Comparison                           │
+├──────────────────────────────────┬──────────────────────────────────────┤
+│  Reference Sector Map            │  Your Sector Map                     │
+│                                  │                                      │
+│  [8 sectors on healthy iris]     │  [8 sectors on patient iris]         │
+│                                  │                                      │
+└──────────────────────────────────┴──────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 TIPS FOR BEST RESULTS:
+
+1. CHOOSE A GOOD REFERENCE IMAGE:
+   - Clear, well-lit photo
+   - Healthy iris with no visible issues
+   - Good focus on the iris
+   - Similar lighting to patient photos
+
+2. IMAGE QUALITY:
+   - Use high resolution (at least 800x600)
+   - Avoid blurry or dark images
+   - Ensure iris is centered
+
+3. CONSISTENCY:
+   - Use the same camera/lighting for all scans
+   - Keep distance consistent
+   - Use macro mode if available
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 TROUBLESHOOTING:
+
+Q: Reference image not showing?
+A: Make sure the file is named exactly:
+   reference/good_iris_reference.jpg
+
+Q: Can I change the reference image?
+A: Yes! Just run the setup script again with a new image.
+   It will overwrite the old reference files.
+
+Q: Do I need all 3 reference files?
+A: No. The app will work with just good_iris_reference.jpg
+   The other files are generated automatically if missing.
+
+Q: What if I don't have a reference image?
+A: The app will show a placeholder message on the left side.
+   You can still analyze patient images, but won't have
+   side-by-side comparison.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 BENEFITS:
+
+✅ Easy visual comparison
+✅ Doctors can quickly spot differences
+✅ Professional presentation
+✅ Consistent baseline for all patients
+✅ Better understanding of results
+✅ Hackathon judges will love it!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 QUICK START:
+
+1. python setup_reference_images.py uploads/your_healthy_iris.jpg
+2. python -m streamlit run app.py
+3. Upload a patient iris image
+4. See side-by-side comparison!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

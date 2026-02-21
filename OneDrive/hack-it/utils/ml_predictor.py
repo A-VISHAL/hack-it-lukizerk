@@ -299,3 +299,278 @@ def predict_iris_health(image_path, model_type='ensemble'):
         return predictor.predict_dl(image)
     else:
         return predictor.calculate_health_score(image)
+
+
+# SHAP Integration Methods (added to IrisHealthPredictor class)
+def calculate_health_score_with_shap(self, image, background_data=None):
+    """
+    Calculate health score with SHAP explanations.
+    
+    Args:
+        image: Iris image
+        background_data: Background samples for SHAP (optional)
+    
+    Returns:
+        dict: Health score with SHAP explanations
+    """
+    # Get base prediction
+    result = self.calculate_health_score(image)
+    
+    if result is None:
+        return None
+    
+    # Try to add SHAP explanations
+    try:
+        from utils.shap_explainer import SHAPExplainer, SectorMapper, HeatmapGenerator, save_shap_data, SHAP_AVAILABLE
+        
+        if not SHAP_AVAILABLE:
+            result['shap_available'] = False
+            return result
+        
+        # Extract features
+        features = self.extract_features(image)
+        
+        # Get feature names
+        feature_names = self._get_feature_names()
+        
+        # Use ML model for SHAP (most reliable)
+        if self.ml_model is not None:
+            # Determine model type
+            model_type = self._get_model_type()
+            
+            # Initialize SHAP explainer
+            explainer = SHAPExplainer(self.ml_model, model_type, background_data)
+            
+            # Compute SHAP values
+            shap_data = explainer.compute_shap_values(features, feature_names)
+            
+            if shap_data is not None:
+                # Map to sectors
+                sector_scores = SectorMapper.map_features_to_sectors(
+                    shap_data['shap_values'],
+                    feature_names
+                )
+                
+                # Add to result
+                result['shap_data'] = shap_data
+                result['sector_scores'] = sector_scores
+                result['shap_available'] = True
+                
+                # Save SHAP data
+                save_shap_data(shap_data, sector_scores, result['health_score'])
+            else:
+                result['shap_available'] = False
+        else:
+            result['shap_available'] = False
+    
+    except Exception as e:
+        print(f"⚠️  SHAP computation failed: {str(e)}")
+        result['shap_available'] = False
+    
+    return result
+
+
+def _get_feature_names(self):
+    """Get feature names in order."""
+    names = []
+    
+    # HSV features (15)
+    for channel in ['H', 'S', 'V']:
+        names.extend([
+            f'{channel}_mean',
+            f'{channel}_std',
+            f'{channel}_median',
+            f'{channel}_q25',
+            f'{channel}_q75'
+        ])
+    
+    # GLCM features (5)
+    names.extend([
+        'contrast',
+        'dissimilarity',
+        'homogeneity',
+        'energy',
+        'correlation'
+    ])
+    
+    # Edge features (3)
+    names.extend([
+        'edge_density',
+        'edge_mean',
+        'edge_std'
+    ])
+    
+    # Histogram features (32)
+    for i in range(32):
+        names.append(f'hist_bin_{i}')
+    
+    # Structural features (3)
+    names.extend([
+        'contour_area',
+        'contour_perimeter',
+        'contour_count'
+    ])
+    
+    # Intensity features (5)
+    names.extend([
+        'intensity_mean',
+        'intensity_std',
+        'intensity_var',
+        'intensity_min',
+        'intensity_max'
+    ])
+    
+    return names
+
+
+def _get_model_type(self):
+    """Determine model type from loaded model."""
+    model_name = str(type(self.ml_model).__name__).lower()
+    
+    if 'randomforest' in model_name:
+        return 'random_forest'
+    elif 'gradient' in model_name:
+        return 'gradient_boosting'
+    elif 'svm' in model_name or 'svc' in model_name:
+        return 'svm'
+    else:
+        return 'unknown'
+
+
+# Add methods to IrisHealthPredictor class
+IrisHealthPredictor.calculate_health_score_with_shap = calculate_health_score_with_shap
+IrisHealthPredictor._get_feature_names = _get_feature_names
+IrisHealthPredictor._get_model_type = _get_model_type
+
+def calculate_health_score_with_shap(self, image, background_data=None):
+    """
+    Calculate health score with SHAP explanations.
+
+    Args:
+        image: Iris image
+        background_data: Background samples for SHAP (optional)
+
+    Returns:
+        dict: Health score with SHAP explanations
+    """
+    # Get base prediction
+    result = self.calculate_health_score(image)
+
+    if result is None:
+        return None
+
+    # Try to add SHAP explanations
+    try:
+        from utils.shap_explainer import SHAPExplainer, SectorMapper, HeatmapGenerator, save_shap_data, SHAP_AVAILABLE
+
+        if not SHAP_AVAILABLE:
+            result['shap_available'] = False
+            return result
+
+        # Extract features
+        features = self.extract_features(image)
+
+        # Get feature names
+        feature_names = self._get_feature_names()
+
+        # Use ML model for SHAP (most reliable)
+        if self.ml_model is not None:
+            # Determine model type
+            model_type = self._get_model_type()
+
+            # Initialize SHAP explainer
+            explainer = SHAPExplainer(self.ml_model, model_type, background_data)
+
+            # Compute SHAP values
+            shap_data = explainer.compute_shap_values(features, feature_names)
+
+            if shap_data is not None:
+                # Map to sectors
+                sector_scores = SectorMapper.map_features_to_sectors(
+                    shap_data['shap_values'],
+                    feature_names
+                )
+
+                # Add to result
+                result['shap_data'] = shap_data
+                result['sector_scores'] = sector_scores
+                result['shap_available'] = True
+
+                # Save SHAP data
+                save_shap_data(shap_data, sector_scores, result['health_score'])
+            else:
+                result['shap_available'] = False
+        else:
+            result['shap_available'] = False
+
+    except Exception as e:
+        print(f"⚠️  SHAP computation failed: {str(e)}")
+        result['shap_available'] = False
+
+    return result
+
+def _get_feature_names(self):
+    """Get feature names in order."""
+    names = []
+
+    # HSV features (15)
+    for channel in ['H', 'S', 'V']:
+        names.extend([
+            f'{channel}_mean',
+            f'{channel}_std',
+            f'{channel}_median',
+            f'{channel}_q25',
+            f'{channel}_q75'
+        ])
+
+    # GLCM features (5)
+    names.extend([
+        'contrast',
+        'dissimilarity',
+        'homogeneity',
+        'energy',
+        'correlation'
+    ])
+
+    # Edge features (3)
+    names.extend([
+        'edge_density',
+        'edge_mean',
+        'edge_std'
+    ])
+
+    # Histogram features (32)
+    for i in range(32):
+        names.append(f'hist_bin_{i}')
+
+    # Structural features (3)
+    names.extend([
+        'contour_area',
+        'contour_perimeter',
+        'contour_count'
+    ])
+
+    # Intensity features (5)
+    names.extend([
+        'intensity_mean',
+        'intensity_std',
+        'intensity_var',
+        'intensity_min',
+        'intensity_max'
+    ])
+
+    return names
+
+def _get_model_type(self):
+    """Determine model type from loaded model."""
+    model_name = str(type(self.ml_model).__name__).lower()
+
+    if 'randomforest' in model_name:
+        return 'random_forest'
+    elif 'gradient' in model_name:
+        return 'gradient_boosting'
+    elif 'svm' in model_name or 'svc' in model_name:
+        return 'svm'
+    else:
+        return 'unknown'
+
